@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+tempCodeRunnerFile.py
+static/conditional_probability.png
+static/seasonal_mortality.png
+static/life_table_qx.png
+mortality_results.xlsx
+.vscode/
+*.log

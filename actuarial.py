@@ -70,13 +70,28 @@ class ActuarialAnalyzer:
     def conditional_death_prob_3yr(self, age_band, disease):
         subset = self.dataset.filter_band_and_disease(age_band, disease)
         n = len(subset)
+
         if n == 0:
             return {}, 0
+
+        # Count who died in each year
         year_counts = defaultdict(int)
         for r in subset:
-            if r.death == 1 and r.years_until_death in [1,2,3]:
+            if r.death == 1 and r.years_until_death in [1, 2, 3]:
                 year_counts[r.years_until_death] += 1
-        probs = {y: year_counts[y]/n for y in [1,2,3]}
+
+        # Correct conditional probabilities:
+        # P(die in year Y | survived to start of year Y)
+        # Survivors to start of year Y = n - deaths in years before Y
+        probs = {}
+        survivors = n
+        for y in [1, 2, 3]:
+            if survivors == 0:
+                probs[y] = 0
+            else:
+                probs[y] = year_counts[y] / survivors
+            survivors -= year_counts[y]  # update survivors after each year
+
         return probs, n
 
     def seasonal_mortality(self):
@@ -134,16 +149,26 @@ class ActuarialAnalyzer:
             probs.get(2,0),
             probs.get(3,0)
         ])
+        
         # Seasonal Mortality
         ws2 = wb.create_sheet("Seasonal_Mortality")
         ws2.append(["Month","Exposure","Deaths","MortalityRate"])
-        for m in sorted(exposure.keys()):
+        
+        MONTH_ORDER = ["Jan","Feb","Mar","Apr","May","Jun",
+               "Jul","Aug","Sep","Oct","Nov","Dec"]
+        ordered_months = [m for m in MONTH_ORDER if m in exposure]
+        for m in ordered_months:
             ws2.append([m, exposure[m], deaths[m], rates[m]])
+        
         # Life Table
         ws3 = wb.create_sheet("Life_Table")
-        ws3.append(["AgeBand","Exposure","qx","lx","dx"])
+        ws3.append(["AgeBand","Exposure","lx","dx","qx","px","Lx","Tx","ex"])
         for row in lifetable:
-            ws3.append([row["AgeBand"], row["Exposure"], row["qx"], row["lx"], row["dx"]])
+           ws3.append([
+              row["AgeBand"], row["Exposure"],
+              row["lx"], row["dx"], row["qx"], row["px"],
+              row["Lx"], row["Tx"], row["ex"]
+            ])
         wb.save(outfile)
 
         # -------------------- GRAPHS --------------------
@@ -169,7 +194,7 @@ class ActuarialAnalyzer:
         # Seasonal Mortality
         if rates:
             plt.figure()
-            months = sorted(rates.keys())
+            months = [m for m in MONTH_ORDER if m in rates]
             rate_values = [rates[m] for m in months]
             plt.plot(months, rate_values)
             plt.xlabel("Infection Month")
@@ -182,25 +207,48 @@ class ActuarialAnalyzer:
             seasonal_file = None
 
         # Life Table
-        if lifetable:
-            plt.figure()
-            agebands = [row["AgeBand"] for row in lifetable]
-            qx_values = [row["qx"] for row in lifetable]
-            plt.plot(agebands, qx_values)
-            plt.xlabel("Age Band")
-            plt.ylabel("qx")
-            plt.title("Life Table Mortality Rate by Age Band")
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            life_table_file = os.path.join(static_dir, "life_table_qx.png")
-            plt.savefig(life_table_file)
-            plt.close()
-        else:
-            life_table_file = None
+    def life_table(self):
+        bands = sorted(
+            set(r.age_band for r in self.dataset.records if r.age_band != "Unknown"),
+            key=lambda x: int(x.split('-')[0])
+        )
 
-        return {
-            "outfile": outfile,
-            "conditional_probability": "conditional_probability.png",
-            "seasonal_mortality": "seasonal_mortality.png",
-            "life_table": "life_table_qx.png"
-        }
+        l = 100000
+        table = []
+
+        for b in bands:
+            band_records = [r for r in self.dataset.records if r.age_band == b]
+            exposure = len(band_records)
+
+            if exposure == 0:
+                continue
+
+            deaths = sum(r.death for r in band_records)
+            qx = deaths / exposure
+            px = 1 - qx
+            dx = int(l * qx)
+            Lx = l - dx / 2          # person-years lived in interval
+            
+            table.append({
+                "AgeBand": b,
+                "Exposure": exposure,
+                "lx": l,
+                "dx": dx,
+                "qx": round(qx, 6),
+                "px": round(px, 6),
+                "Lx": round(Lx, 2),
+            })
+
+            l -= dx
+
+        # Now compute Tx and ex (need to go backwards)
+        # Tx = sum of all Lx from current row to end
+        for i in range(len(table) - 1, -1, -1):
+            if i == len(table) - 1:
+                table[i]["Tx"] = table[i]["Lx"]
+            else:
+                table[i]["Tx"] = table[i]["Lx"] + table[i + 1]["Tx"]
+            # ex = complete expectation of life
+            table[i]["ex"] = round(table[i]["Tx"] / table[i]["lx"], 4) if table[i]["lx"] > 0 else 0
+
+        return table

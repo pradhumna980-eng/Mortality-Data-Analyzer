@@ -168,7 +168,10 @@ class ActuarialAnalyzer:
         # Sheet 2
         ws2 = wb.create_sheet("Seasonal_Mortality")
         ws2.append(["Month", "Exposure", "Deaths", "MortalityRate"])
-        for m in sorted(exposure.keys()):
+        MONTH_ORDER = ["Jan","Feb","Mar","Apr","May","Jun",
+               "Jul","Aug","Sep","Oct","Nov","Dec"]
+        ordered_months = [m for m in MONTH_ORDER if m in exposure]
+        for m in ordered_months:
             ws2.append([m, exposure[m], deaths[m], rates[m]])
 
         # Sheet 3
@@ -200,7 +203,7 @@ class ActuarialAnalyzer:
 
         if rates:
             plt.figure()
-            months = sorted(rates.keys())
+            months = [m for m in MONTH_ORDER if m in rates]
             rate_values = [rates[m] for m in months]
             plt.plot(months, rate_values)
             plt.xlabel("Infection Month")

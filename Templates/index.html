@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mortality Analyzer</title>
+</head>
+<body style="margin:0; font-family:Arial, sans-serif;">
+
+    <!-- Watermark Logo -->
+    <img src="{{ url_for('static', filename='logo.jpeg') }}"
+         alt="College Logo"
+         style="
+            position:fixed;
+            top:50%;
+            left:50%;
+            transform:translate(-50%, -50%);
+            width:400px;
+            opacity:0.08;
+            z-index:-1;
+         ">
+
+    <div style="text-align:center; margin-top:100px;">
+        <h1>Mortality Analysis</h1>
+
+        <form action="/analyze" method="POST">
+            <label>Age:</label><br>
+            <input type="number" name="age" required>
+            <br><br>
+
+            <label>Disease:</label><br>
+            <input type="text" name="disease" required>
+            <br><br>
+
+            <button type="submit">Analyze</button>
+        </form>
+    </div>
+
+</body>
+</html>

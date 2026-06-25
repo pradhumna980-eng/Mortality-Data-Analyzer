@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results</title>
+</head>
+<body>
+    <h1>Analysis Results</h1>
+
+    <p><strong>Age Band:</strong> {{ age_band }}</p>
+    <p><strong>Disease:</strong> {{ disease }}</p>
+    <p><strong>Sample Size (N):</strong> {{ n }}</p>
+
+    <h3>3-Year Conditional Death Probabilities</h3>
+    <p>Year 1: {{ "%.3f"|format(p1) }}</p>
+    <p>Year 2: {{ "%.3f"|format(p2) }}</p>
+    <p>Year 3: {{ "%.3f"|format(p3) }}</p>
+
+    <p>Excel file saved as: {{ outfile }}</p>
+
+    <br>
+    <a href="/">Go Back</a>
+    <h3>Graphs</h3>
+
+<p>3-Year Conditional Death Probability:</p>
+<img src="{{ url_for('static', filename='conditional_probability.png') }}" width="500">
+
+<p>Seasonal Mortality Rate:</p>
+<img src="{{ url_for('static', filename='seasonal_mortality.png') }}" width="500">
+
+<p>Life Table Mortality Rate:</p>
+<img src="{{ url_for('static', filename='life_table_qx.png') }}" width="500">
+
+</body>
+</html>
